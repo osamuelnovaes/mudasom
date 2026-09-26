@@ -11,7 +11,7 @@ O fluxo pede revisão antes de gravar qualquer coisa:
 
 ## O que está pronto
 
-- Interface responsiva em português e acesso protegido por senha.
+- Interface responsiva em português; o preview usa Vercel Authentication como único controle de acesso.
 - OAuth do Spotify para ler playlists às quais a conta conectada tem acesso.
 - OAuth do Google para pesquisar no YouTube e criar uma playlist privada.
 - Revisão manual das correspondências antes de qualquer gravação no destino.
@@ -26,7 +26,7 @@ O fluxo pede revisão antes de gravar qualquer coisa:
 - Cada inclusão em playlist também usa cota do YouTube Data API. Código aberto e gratuito não altera os limites que o Google aplica ao projeto OAuth conectado.
 - A busca encontra vídeos do YouTube. Ela não garante que o resultado seja a gravação exata nem que todo vídeo apareça no YouTube Music. Confira título e canal antes de transferir.
 - O modo de desenvolvimento do Spotify serve para uso pessoal, mas exige Spotify Premium para o proprietário do app e permite conectar contas previamente autorizadas. Consulte os [modos de cota do Spotify](https://developer.spotify.com/documentation/web-api/concepts/quota-modes).
-- O app foi feito para uma pessoa. A senha protege uma implantação pessoal; não é um sistema de contas para vários usuários. Use uma senha longa e mantenha as credenciais OAuth somente em variáveis de ambiente do servidor.
+- O app foi feito para uma pessoa e não é um sistema de contas para vários usuários. Mantenha as credenciais OAuth somente em variáveis de ambiente do servidor. Mantenha Vercel Authentication habilitada para o preview.
 - A transferência faz uma chamada por faixa ao destino. Se a Vercel ou a API do provedor falhar no meio, a tela informa que a playlist pode ter ficado incompleta para você conferir.
 
 ## Rodar localmente
@@ -38,7 +38,7 @@ npm install
 cp .env.example .env.local
 ```
 
-Defina `APP_PASSWORD` com pelo menos 16 caracteres e gere `APP_SESSION_SECRET` com:
+Gere `APP_SESSION_SECRET` com:
 
 ```bash
 openssl rand -base64 48
@@ -76,7 +76,7 @@ Abra `http://localhost:3000`. O callback do Spotify usa `127.0.0.1` porque o Spo
 
 ## Publicação e configuração na Vercel
 
-O código está publicado em [github.com/osamuelnovaes/mudasom](https://github.com/osamuelnovaes/mudasom). O preview pessoal atual usa `https://ent-osamuelnovaes-projects.vercel.app`; sua senha de acesso e `APP_SESSION_SECRET` já estão cadastrados como variáveis sensíveis no ambiente Preview.
+O código está publicado em [github.com/osamuelnovaes/mudasom](https://github.com/osamuelnovaes/mudasom). O preview pessoal atual usa `https://ent-osamuelnovaes-projects.vercel.app`; a proteção é feita pela Vercel Authentication, e `APP_SESSION_SECRET` está cadastrado como variável sensível no ambiente Preview.
 
 Para habilitar as integrações no preview:
 
@@ -85,7 +85,7 @@ Para habilitar as integrações no preview:
    - `https://ent-osamuelnovaes-projects.vercel.app/api/auth/youtube/callback`
 2. Adicione no projeto Vercel as variáveis `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`, `SPOTIFY_REDIRECT_URI`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` e `GOOGLE_REDIRECT_URI`.
 3. Use os mesmos redirects acima nos valores de `SPOTIFY_REDIRECT_URI` e `GOOGLE_REDIRECT_URI`, salve as variáveis e faça um novo deploy Preview.
-4. Abra o endereço pessoal, entre com a senha fornecida separadamente, aceite os Termos de uso do MudaSom e conecte suas contas.
+4. Abra o endereço pessoal, entre na Vercel, aceite os Termos de uso do MudaSom e conecte suas contas.
 
 Para criar um domínio estável próprio ou promover a aplicação para Production, configure as mesmas variáveis no ambiente Vercel correspondente e cadastre o novo domínio como redirect OAuth nos dois provedores.
 
@@ -95,7 +95,7 @@ Use redirects diferentes para desenvolvimento local e produção. Nunca coloque 
 
 - Next.js App Router e TypeScript, distribuídos como Vercel Functions.
 - Os callbacks OAuth do Spotify e Google rodam no servidor.
-- As rotas renovam access tokens expirados; o cookie criptografado guarda refresh tokens e validade da senha de acesso.
+- As rotas renovam access tokens expirados; cookies criptografados guardam refresh tokens e o consentimento de uso.
 - Não requer Docker, processo em segundo plano ou banco de dados local gravável.
 
 ## Licença

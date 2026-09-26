@@ -65,24 +65,12 @@ function BrandMark() {
   return <div className="brand-mark" aria-hidden="true"><span /><span /><span /><span /><span /></div>;
 }
 
-function AccessGate({ configured, onLogin }: { configured: boolean; onLogin: (password: string) => Promise<void> }) {
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
+function AccessGate({ configured }: { configured: boolean }) {
   const [deployed, setDeployed] = useState(false);
 
   useEffect(() => {
     setDeployed(!["localhost", "127.0.0.1"].includes(window.location.hostname));
   }, []);
-
-  async function submit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setBusy(true);
-    setError("");
-    try { await onLogin(password); }
-    catch (reason) { setError(reason instanceof Error ? reason.message : "Não foi possível entrar."); }
-    finally { setBusy(false); }
-  }
 
   return (
     <main className="gate-shell">
@@ -93,14 +81,9 @@ function AccessGate({ configured, onLogin }: { configured: boolean; onLogin: (pa
         <h1>Sua música.<br /><em>Seu espaço.</em></h1>
         <p>Um lugar privado para levar suas playlists de um serviço para outro, com cada faixa revisada por você.</p>
         {!configured ? (
-          <div className="setup-note"><strong>Falta proteger este espaço.</strong><span>{deployed ? <>Defina <code>APP_PASSWORD</code> (16+ caracteres) e <code>APP_SESSION_SECRET</code> (32+) nas variáveis do projeto Vercel e faça redeploy.</> : <>Defina <code>APP_PASSWORD</code> (16+ caracteres) e <code>APP_SESSION_SECRET</code> (32+) no arquivo <code>.env.local</code>.</>}</span></div>
+          <div className="setup-note"><strong>Falta preparar a sessão segura.</strong><span>{deployed ? <>Defina <code>APP_SESSION_SECRET</code> com pelo menos 32 caracteres nas variáveis do projeto Vercel e faça redeploy.</> : <>Defina <code>APP_SESSION_SECRET</code> com pelo menos 32 caracteres no arquivo <code>.env.local</code>.</>}</span></div>
         ) : (
-          <form onSubmit={submit} className="gate-form">
-            <label htmlFor="app-password">Senha do seu espaço</label>
-            <div className="gate-input-row"><input id="app-password" type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Digite sua senha" required /><button className="round-arrow" aria-label="Entrar" disabled={busy}><Icon name="arrow" /></button></div>
-            {error && <div className="inline-error">{error}</div>}
-            <span className="micro-copy">A senha fica em uma variável privada da Vercel.</span>
-          </form>
+          <div className="setup-note"><strong>Entre pela Vercel.</strong><span>Este preview usa a autenticação da Vercel como única proteção de acesso.</span></div>
         )}
       </section>
       <div className="gate-bottom"><span>FEITO PARA SUA BIBLIOTECA, NÃO PARA UM FEED.</span><span>01 / PRIVADO</span></div>
@@ -148,7 +131,7 @@ export default function Home() {
       "spotify-token": "O Spotify não concluiu a autorização. Confira o callback cadastrado.",
       "youtube-token": "O Google não concluiu a autorização. Confira o callback cadastrado.",
       "youtube-refresh": "O Google não retornou acesso offline. Reconecte e aceite as permissões.",
-      "auth-required": "Entre com sua senha antes de conectar uma plataforma.",
+      "auth-required": "Entre na Vercel antes de conectar uma plataforma.",
       "terms-required": "Leia e aceite os Termos de uso antes de conectar uma conta.",
     };
     if (error && errors[error]) setNotice({ kind: "error", text: errors[error] });
@@ -198,14 +181,6 @@ export default function Home() {
   const addedCount = useMemo(() => tracks.filter((track) => track.added).length, [tracks]);
   const transferComplete = Boolean(destinationPlaylistId && readyCount > 0 && remainingCount === 0 && searchableCount === 0);
   const currentStep = !access?.spotifyConnected ? 1 : !playlist ? 2 : transferComplete || jobState === "done" ? 4 : 3;
-
-  async function login(password: string) {
-    const result = await responseJson<{ authenticated: boolean }>(await fetch("/api/access/login", {
-      method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ password }),
-    }));
-    if (!result.authenticated) throw new Error("Não foi possível iniciar a sessão.");
-    await refreshAccess();
-  }
 
   async function updateTermsConsent(accepted: boolean) {
     setConsentBusy(true);
@@ -366,14 +341,14 @@ export default function Home() {
   }
 
   if (checking || !access) return <main className="loading-shell"><BrandMark /><span>abrindo seu espaço...</span></main>;
-  if (!access.configured || !access.authenticated) return <AccessGate configured={access.configured} onLogin={login} />;
+  if (!access.configured || !access.authenticated) return <AccessGate configured={access.configured} />;
 
   return (
     <main className="app-shell">
       <div className="ambient ambient-one" /><div className="ambient ambient-two" />
       <header className="topbar">
         <a className="brand" href="#top" aria-label="MudaSom início"><BrandMark /><span>mudasom</span><sup>beta</sup></a>
-        <div className="topbar-right"><span className="private-indicator"><i /> ESPAÇO PRIVADO</span><button className="text-button" onClick={logout}>Sair</button></div>
+        <div className="topbar-right"><span className="private-indicator"><i /> ESPAÇO PRIVADO</span><button className="text-button" onClick={logout}>Limpar dados</button></div>
       </header>
 
       <section className="hero" id="top">
