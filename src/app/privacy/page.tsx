@@ -24,7 +24,7 @@ export default function PrivacyPage() {
         <p>Os tokens OAuth e a sessão de acesso ficam em cookies HTTP-only criptografados pelo servidor com AES-GCM. O código do servidor roda como funções da Vercel e encaminha solicitações às APIs dos provedores. Não usamos os dados para publicidade, venda ou treinamento de modelos.</p>
 
         <h2>3. Cookies e duração</h2>
-        <p>Cookies são necessários para proteger a senha do app e manter as conexões. Eles são HTTP-only, usam HTTPS em produção e têm duração de até 14 dias, renovada durante o uso. Os refresh tokens continuam sujeitos à validade, revogação e regras do Spotify e Google.</p>
+        <p>O login da Vercel protege o acesso a esta implantação. Cookies HTTP-only do MudaSom guardam tokens OAuth e o consentimento; eles usam HTTPS em produção e têm duração de até 14 dias, renovada durante o uso. Os refresh tokens também seguem a validade e as regras do Spotify e Google.</p>
 
         <h2>4. Compartilhamento com provedores</h2>
         <p>O Spotify recebe solicitações para ler as playlists autorizadas. O Google/YouTube recebe pesquisas por faixa e comandos para criar ou preencher uma playlist. A Vercel hospeda o código e executa as funções. Cada serviço aplica sua própria política de privacidade e seus próprios registros operacionais.</p>
