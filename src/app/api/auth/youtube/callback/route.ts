@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { callbackCookieOptions, isAuthenticated, readSession, unseal, writeSession } from "@/lib/session";
+import { callbackCookieOptions, hasAcceptedTerms, isAuthenticated, readSession, unseal, writeSession } from "@/lib/session";
 
 export const runtime = "nodejs";
 
@@ -14,7 +14,9 @@ export async function GET(request: NextRequest) {
   const state = request.nextUrl.searchParams.get("state");
   const pending = request.cookies.get("mudasom_oauth_youtube")?.value;
   const pendingState = pending ? unseal<{ state: string }>(pending)?.state : null;
-  if (!isAuthenticated(readSession(request))) return returnHome(request, "error=auth-required");
+  const session = readSession(request);
+  if (!isAuthenticated(session)) return returnHome(request, "error=auth-required");
+  if (!hasAcceptedTerms(session)) return returnHome(request, "error=terms-required");
   if (!code || !state || !pendingState || state !== pendingState) return returnHome(request, "error=youtube-state");
 
   const clientId = process.env.GOOGLE_CLIENT_ID;
@@ -38,7 +40,6 @@ export async function GET(request: NextRequest) {
     const tokens = await response.json();
     if (!response.ok || !tokens.access_token) return returnHome(request, "error=youtube-token");
 
-    const session = readSession(request);
     const refreshToken = tokens.refresh_token ?? session.youtube?.refreshToken;
     if (!refreshToken) return returnHome(request, "error=youtube-refresh");
     session.youtube = {

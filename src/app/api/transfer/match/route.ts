@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getYoutubeAccessToken, isAuthenticated, readSession, writeSession } from "@/lib/session";
+import { getYoutubeAccessToken, hasAcceptedTerms, isAuthenticated, readSession, writeSession } from "@/lib/session";
 import { safeText, scoreVideo, type TrackInput, type VideoCandidate } from "@/lib/music";
 
 export const runtime = "nodejs";
@@ -8,6 +8,7 @@ export const maxDuration = 15;
 export async function POST(request: NextRequest) {
   const session = readSession(request);
   if (!isAuthenticated(session)) return NextResponse.json({ error: "Sua sessão terminou. Entre novamente." }, { status: 401 });
+  if (!hasAcceptedTerms(session)) return NextResponse.json({ error: "Leia e aceite os Termos de uso antes de usar as integrações." }, { status: 403 });
 
   let body: { track?: Partial<TrackInput> };
   try {

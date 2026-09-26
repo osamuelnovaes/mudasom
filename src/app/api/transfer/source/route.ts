@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getSpotifyAccessToken, isAuthenticated, readSession, writeSession } from "@/lib/session";
+import { getSpotifyAccessToken, hasAcceptedTerms, isAuthenticated, readSession, writeSession } from "@/lib/session";
 import { parseSpotifyPlaylistId } from "@/lib/music";
 
 export const runtime = "nodejs";
@@ -12,6 +12,7 @@ type SpotifyTrack = { id?: string; name?: string; artists?: Array<{ name?: strin
 export async function POST(request: NextRequest) {
   const session = readSession(request);
   if (!isAuthenticated(session)) return NextResponse.json({ error: "Sua sessão terminou. Entre novamente." }, { status: 401 });
+  if (!hasAcceptedTerms(session)) return NextResponse.json({ error: "Leia e aceite os Termos de uso antes de usar as integrações." }, { status: 403 });
 
   let body: { playlistUrl?: unknown; offset?: unknown };
   try {

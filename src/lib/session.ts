@@ -10,6 +10,8 @@ export type ProviderToken = {
 
 export type AppSession = {
   authenticatedUntil?: number;
+  termsAcceptedAt?: number;
+  termsVersion?: number;
   spotify?: ProviderToken;
   youtube?: ProviderToken;
 };
@@ -62,11 +64,13 @@ export function readSession(request: NextRequest): AppSession {
   const authRaw = request.cookies.get(AUTH_COOKIE)?.value;
   const spotifyRaw = request.cookies.get(SPOTIFY_COOKIE)?.value;
   const youtubeRaw = request.cookies.get(YOUTUBE_COOKIE)?.value;
-  const auth = authRaw ? unseal<Pick<AppSession, "authenticatedUntil">>(authRaw) : null;
+  const auth = authRaw ? unseal<Pick<AppSession, "authenticatedUntil" | "termsAcceptedAt" | "termsVersion">>(authRaw) : null;
   const spotify = spotifyRaw ? unseal<ProviderToken>(spotifyRaw) : null;
   const youtube = youtubeRaw ? unseal<ProviderToken>(youtubeRaw) : null;
   return {
     ...(auth?.authenticatedUntil ? { authenticatedUntil: auth.authenticatedUntil } : {}),
+    ...(auth?.termsAcceptedAt ? { termsAcceptedAt: auth.termsAcceptedAt } : {}),
+    ...(auth?.termsVersion ? { termsVersion: auth.termsVersion } : {}),
     ...(spotify ? { spotify } : {}),
     ...(youtube ? { youtube } : {}),
   };
@@ -75,7 +79,11 @@ export function readSession(request: NextRequest): AppSession {
 export function writeSession(response: NextResponse, session: AppSession) {
   const save = (name: string, value: unknown) => response.cookies.set(name, seal(value), SESSION_COOKIE_OPTIONS);
   const clear = (name: string) => response.cookies.set(name, "", { ...SESSION_COOKIE_OPTIONS, maxAge: 0 });
-  if (session.authenticatedUntil) save(AUTH_COOKIE, { authenticatedUntil: session.authenticatedUntil }); else clear(AUTH_COOKIE);
+  if (session.authenticatedUntil || session.termsVersion) save(AUTH_COOKIE, {
+    ...(session.authenticatedUntil ? { authenticatedUntil: session.authenticatedUntil } : {}),
+    ...(session.termsAcceptedAt ? { termsAcceptedAt: session.termsAcceptedAt } : {}),
+    ...(session.termsVersion ? { termsVersion: session.termsVersion } : {}),
+  }); else clear(AUTH_COOKIE);
   if (session.spotify) save(SPOTIFY_COOKIE, session.spotify); else clear(SPOTIFY_COOKIE);
   if (session.youtube) save(YOUTUBE_COOKIE, session.youtube); else clear(YOUTUBE_COOKIE);
 }
@@ -88,6 +96,10 @@ export function clearSession(response: NextResponse) {
 
 export function isAuthenticated(session: AppSession) {
   return typeof session.authenticatedUntil === "number" && session.authenticatedUntil > Date.now();
+}
+
+export function hasAcceptedTerms(session: AppSession) {
+  return isAuthenticated(session) && session.termsVersion === 1 && Boolean(session.termsAcceptedAt);
 }
 
 export function verifyPassword(candidate: string) {

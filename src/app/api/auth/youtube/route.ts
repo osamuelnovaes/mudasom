@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { callbackCookieOptions, isAuthenticated, makeOAuthState, readSession, seal } from "@/lib/session";
+import { callbackCookieOptions, hasAcceptedTerms, isAuthenticated, makeOAuthState, readSession, seal } from "@/lib/session";
 
 export const runtime = "nodejs";
 
 export async function GET(request: NextRequest) {
-  if (!isAuthenticated(readSession(request))) return NextResponse.redirect(new URL("/?auth=required", request.url));
+  const session = readSession(request);
+  if (!isAuthenticated(session)) return NextResponse.redirect(new URL("/?auth=required", request.url));
+  if (!hasAcceptedTerms(session)) return NextResponse.redirect(new URL("/?error=terms-required", request.url));
   const clientId = process.env.GOOGLE_CLIENT_ID;
   const redirectUri = process.env.GOOGLE_REDIRECT_URI;
   if (!clientId || !redirectUri) return NextResponse.redirect(new URL("/?error=youtube-config", request.url));

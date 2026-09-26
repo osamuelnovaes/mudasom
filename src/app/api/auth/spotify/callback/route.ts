@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { callbackCookieOptions, isAuthenticated, readSession, seal, unseal, writeSession } from "@/lib/session";
+import { callbackCookieOptions, hasAcceptedTerms, isAuthenticated, readSession, seal, unseal, writeSession } from "@/lib/session";
 
 export const runtime = "nodejs";
 
@@ -14,7 +14,9 @@ export async function GET(request: NextRequest) {
   const state = request.nextUrl.searchParams.get("state");
   const pending = request.cookies.get("mudasom_oauth_spotify")?.value;
   const pendingState = pending ? unseal<{ state: string }>(pending)?.state : null;
-  if (!isAuthenticated(readSession(request))) return returnHome(request, "error=auth-required");
+  const session = readSession(request);
+  if (!isAuthenticated(session)) return returnHome(request, "error=auth-required");
+  if (!hasAcceptedTerms(session)) return returnHome(request, "error=terms-required");
   if (!code || !state || !pendingState || state !== pendingState) return returnHome(request, "error=spotify-state");
 
   const clientId = process.env.SPOTIFY_CLIENT_ID;
@@ -35,7 +37,6 @@ export async function GET(request: NextRequest) {
     const tokens = await response.json();
     if (!response.ok || !tokens.access_token || !tokens.refresh_token) return returnHome(request, "error=spotify-token");
 
-    const session = readSession(request);
     session.spotify = {
       accessToken: tokens.access_token,
       refreshToken: tokens.refresh_token,

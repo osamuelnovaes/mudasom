@@ -6,6 +6,7 @@ import type { TrackInput, VideoCandidate } from "@/lib/music";
 type AccessState = {
   configured: boolean;
   authenticated: boolean;
+  termsAccepted: boolean;
   spotifyConfigured: boolean;
   youtubeConfigured: boolean;
   spotifyConnected: boolean;
@@ -121,6 +122,7 @@ export default function Home() {
   const [jobProgress, setJobProgress] = useState({ current: 0, total: 0 });
   const [resultUrl, setResultUrl] = useState("");
   const [draftReady, setDraftReady] = useState(false);
+  const [consentBusy, setConsentBusy] = useState(false);
 
   const refreshAccess = useCallback(async () => {
     try {
@@ -147,6 +149,7 @@ export default function Home() {
       "youtube-token": "O Google não concluiu a autorização. Confira o callback cadastrado.",
       "youtube-refresh": "O Google não retornou acesso offline. Reconecte e aceite as permissões.",
       "auth-required": "Entre com sua senha antes de conectar uma plataforma.",
+      "terms-required": "Leia e aceite os Termos de uso antes de conectar uma conta.",
     };
     if (error && errors[error]) setNotice({ kind: "error", text: errors[error] });
     if (connected || error) window.history.replaceState({}, "", window.location.pathname);
@@ -202,6 +205,18 @@ export default function Home() {
     }));
     if (!result.authenticated) throw new Error("Não foi possível iniciar a sessão.");
     await refreshAccess();
+  }
+
+  async function updateTermsConsent(accepted: boolean) {
+    setConsentBusy(true);
+    try {
+      await responseJson<{ accepted: boolean }>(await fetch("/api/access/consent", {
+        method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ accepted }),
+      }));
+      await refreshAccess();
+    } catch (error) {
+      setNotice({ kind: "error", text: error instanceof Error ? error.message : "Não consegui salvar sua escolha." });
+    } finally { setConsentBusy(false); }
   }
 
   async function logout() {
@@ -386,15 +401,21 @@ export default function Home() {
           {["Conecte", "Escolha", "Revise", "Leve"].map((label, index) => <div className={`step ${index + 1 < currentStep ? "step-complete" : index + 1 === currentStep ? "step-active" : ""}`} key={label}><span>{index + 1 < currentStep ? <Icon name="check" size={14} /> : `0${index + 1}`}</span><b>{label}</b></div>)}
         </div>
 
+        <label className={`terms-consent ${access.termsAccepted ? "terms-consent-accepted" : ""}`}>
+          <input type="checkbox" checked={access.termsAccepted} disabled={consentBusy} onChange={(event) => void updateTermsConsent(event.target.checked)} />
+          <span>Li e aceito os <a href="/terms" target="_blank" rel="noreferrer">Termos de uso</a> e li a <a href="/privacy" target="_blank" rel="noreferrer">Política de Privacidade</a>. Só então conecto minhas contas.</span>
+          {consentBusy && <span className="consent-saving">SALVANDO</span>}
+        </label>
+
         <div className="connections">
           <div className="connection-block">
             <div className="connection-heading"><span className="connection-number">01</span><div><strong>De onde vem</strong><small>Conecte sua biblioteca de origem</small></div></div>
-          <ConnectionCard provider="spotify" configured={access.spotifyConfigured} connected={access.spotifyConnected} onDisconnect={() => disconnect("spotify")} />
+          <ConnectionCard provider="spotify" configured={access.spotifyConfigured} termsAccepted={access.termsAccepted} connected={access.spotifyConnected} onDisconnect={() => disconnect("spotify")} />
           </div>
           <div className="route-mark"><span /><Icon name="arrow" size={19} /><span /></div>
           <div className="connection-block">
             <div className="connection-heading"><span className="connection-number">02</span><div><strong>Para onde vai</strong><small>Escolha seu destino musical</small></div></div>
-          <ConnectionCard provider="youtube" configured={access.youtubeConfigured} connected={access.youtubeConnected} onDisconnect={() => disconnect("youtube")} />
+          <ConnectionCard provider="youtube" configured={access.youtubeConfigured} termsAccepted={access.termsAccepted} connected={access.youtubeConnected} onDisconnect={() => disconnect("youtube")} />
         </div>
 
         {(!access.spotifyConfigured || !access.youtubeConfigured) && <div className="oauth-setup-note"><div className="eyebrow muted-eyebrow">CHAVES DA SUA CONTA</div><strong>Conclua a configuração OAuth uma vez</strong><p>Cadastre os callbacks do domínio Vercel nos consoles de desenvolvedor e adicione os IDs e secrets como variáveis do projeto. O guia no README lista os nomes exatos e os passos de cada provedor.</p><div><code>/api/auth/spotify/callback</code><code>/api/auth/youtube/callback</code></div></div>}
@@ -406,7 +427,7 @@ export default function Home() {
           <label className="sr-only" htmlFor="playlist-url">Link da playlist do Spotify</label>
           <Icon name="link" size={20} />
           <input id="playlist-url" value={sourceUrl} onChange={(event) => setSourceUrl(event.target.value)} placeholder="Cole aqui o link de uma playlist do Spotify" type="url" required disabled={!access.spotifyConnected || loadingSource} />
-          <button className="primary-button" type="submit" disabled={!access.spotifyConnected || loadingSource}>{loadingSource ? <><span className="spinner" /> LENDO</> : <>CARREGAR <Icon name="arrow" size={17} /></>}</button>
+          <button className="primary-button" type="submit" disabled={!access.spotifyConnected || !access.termsAccepted || loadingSource}>{loadingSource ? <><span className="spinner" /> LENDO</> : <>CARREGAR <Icon name="arrow" size={17} /></>}</button>
         </form>
         {!access.spotifyConnected && <p className="field-hint">Conecte o Spotify acima para listar playlists privadas e públicas que sua conta pode acessar.</p>}
         <div className="source-footnote"><span><Icon name="lock" size={14} /> SUA PLAYLIST ORIGINAL FICA INTACTA</span><span>LINK DE PLAYLIST DO SPOTIFY</span></div>
@@ -427,7 +448,7 @@ export default function Home() {
           <div className="quota-callout"><Icon name="spark" size={17} /><span>O MudaSom não impõe limite de faixas. A cota inicial gratuita do YouTube permite <strong>100 buscas por dia por projeto</strong>; quando ela termina, as faixas restantes ficam pendentes para retomar depois. <a href="https://developers.google.com/youtube/v3/determine_quota_cost" target="_blank" rel="noreferrer">Ver cota <Icon name="external" size={12} /></a> · <a href="https://support.google.com/youtube/contact/yt_api_form?hl=en" target="_blank" rel="noreferrer">Pedir aumento</a></span><b>{selectedCount} selecionadas</b></div>
           <p className="draft-note">O progresso fica salvo neste navegador para retomada; sua biblioteca não é armazenada no servidor do MudaSom.</p>
 
-          <div className="track-toolbar"><div><strong>{tracks.length} faixas carregadas</strong><span>As correspondências são sugestões: confirme a versão antes de transferir.</span></div><button className="outline-button" onClick={matchTracks} disabled={jobState === "matching" || searchableCount === 0 || !access.youtubeConnected}>{jobState === "matching" ? <><span className="spinner dark-spinner" /> PESQUISANDO {jobProgress.current}/{jobProgress.total}</> : searchableCount ? <><Icon name="refresh" size={16} /> BUSCAR NO YOUTUBE · {searchableCount}</> : <>BUSCAS CONCLUÍDAS</>}</button></div>
+          <div className="track-toolbar"><div><strong>{tracks.length} faixas carregadas</strong><span>As correspondências são sugestões: confirme a versão antes de transferir.</span></div><button className="outline-button" onClick={matchTracks} disabled={jobState === "matching" || searchableCount === 0 || !access.youtubeConnected || !access.termsAccepted}>{jobState === "matching" ? <><span className="spinner dark-spinner" /> PESQUISANDO {jobProgress.current}/{jobProgress.total}</> : searchableCount ? <><Icon name="refresh" size={16} /> BUSCAR NO YOUTUBE · {searchableCount}</> : <>BUSCAS CONCLUÍDAS</>}</button></div>
 
           <div className="track-list">
             {tracks.map((track, index) => <article className={`track-row ${!track.selected ? "track-unselected" : ""}`} key={track.key}>
@@ -444,22 +465,22 @@ export default function Home() {
           {jobState === "adding" && <div className="transfer-progress"><div><span>CRIANDO SUA PLAYLIST</span><b>{jobProgress.current} / {jobProgress.total}</b></div><div className="progress-track"><i style={{ width: `${jobProgress.total ? jobProgress.current / jobProgress.total * 100 : 0}%` }} /></div></div>}
           {resultUrl && <a className={`created-playlist ${transferComplete || jobState === "done" ? "created-success" : "created-partial"}`} href={resultUrl} target="_blank" rel="noreferrer"><span><Icon name={transferComplete || jobState === "done" ? "check" : "music"} size={17} />{transferComplete || jobState === "done" ? "Playlist criada" : "Playlist de destino"}</span><b>ABRIR NO YOUTUBE <Icon name="external" size={14} /></b></a>}
 
-          <div className="transfer-footer"><span>{readyCount} correspondências · {addedCount} adicionadas · {remainingCount} ainda para transferir</span><button className="primary-button transfer-button" onClick={createPlaylist} disabled={remainingCount === 0 || ["matching", "creating", "adding"].includes(jobState) || !access.youtubeConnected}>{jobState === "creating" || jobState === "adding" ? <><span className="spinner" /> LEVANDO {jobProgress.current}/{jobProgress.total}</> : destinationPlaylistId ? <>RETOMAR TRANSFERÊNCIA <Icon name="arrow" size={17} /></> : <>CRIAR PLAYLIST PRIVADA <Icon name="arrow" size={17} /></>}</button></div>
+          <div className="transfer-footer"><span>{readyCount} correspondências · {addedCount} adicionadas · {remainingCount} ainda para transferir</span><button className="primary-button transfer-button" onClick={createPlaylist} disabled={remainingCount === 0 || ["matching", "creating", "adding"].includes(jobState) || !access.youtubeConnected || !access.termsAccepted}>{jobState === "creating" || jobState === "adding" ? <><span className="spinner" /> LEVANDO {jobProgress.current}/{jobProgress.total}</> : destinationPlaylistId ? <>RETOMAR TRANSFERÊNCIA <Icon name="arrow" size={17} /></> : <>CRIAR PLAYLIST PRIVADA <Icon name="arrow" size={17} /></>}</button></div>
         </section>}
       </section>
 
       <section className="why-strip"><div><span className="strip-number">A.</span><strong>Você mantém o controle</strong><p>O MudaSom sugere. Você escolhe o que vai para a nova lista.</p></div><div><span className="strip-number">B.</span><strong>Privada desde o começo</strong><p>A playlist de destino começa privada na sua conta do YouTube.</p></div><div><span className="strip-number">C.</span><strong>Seu acesso fica protegido</strong><p>Tokens criptografados e usados apenas no servidor da sua aplicação.</p></div></section>
 
-      <footer className="footer"><a className="footer-brand" href="#top"><BrandMark /><span>mudasom</span></a><span>UM PROJETO PESSOAL · LICENÇA MIT</span><span>© 2026</span></footer>
+      <footer className="footer"><a className="footer-brand" href="#top"><BrandMark /><span>mudasom</span></a><nav className="footer-links"><a href="/terms">TERMOS</a><a href="/privacy">PRIVACIDADE</a></nav><span>USO PESSOAL · LICENÇA MIT</span><span>© 2026</span></footer>
     </main>
   );
 }
 
-function ConnectionCard({ provider, configured, connected, onDisconnect }: { provider: "spotify" | "youtube"; configured: boolean; connected: boolean; onDisconnect: () => void }) {
+function ConnectionCard({ provider, configured, termsAccepted, connected, onDisconnect }: { provider: "spotify" | "youtube"; configured: boolean; termsAccepted: boolean; connected: boolean; onDisconnect: () => void }) {
   const spotify = provider === "spotify";
   return <div className={`provider-card ${connected ? "provider-connected" : ""}`}>
     <div className={`provider-mark ${spotify ? "spotify-mark" : "youtube-mark"}`}>{spotify ? <span className="spotify-glyph">≋</span> : <span className="play-glyph">▶</span>}</div>
-    <div className="provider-copy"><strong>{spotify ? "Spotify" : "YouTube Music"}</strong><small>{connected ? "Conta conectada" : configured ? spotify ? "Sua playlist de origem" : "Seu destino de música" : "Configure o OAuth no Vercel"}</small></div>
-    {connected ? <button className="connected-action" onClick={onDisconnect}><span><i /> CONECTADO</span><span className="disconnect-word">DESCONECTAR</span></button> : configured ? <a className={`connect-action ${spotify ? "connect-spotify" : "connect-youtube"}`} href={`/api/auth/${provider}`}><span>CONECTAR</span><Icon name="arrow" size={15} /></a> : <span className="connection-missing">FALTA CONFIG.</span>}
+    <div className="provider-copy"><strong>{spotify ? "Spotify" : "YouTube Music"}</strong><small>{connected ? "Conta conectada" : !termsAccepted ? "Leia e aceite os documentos" : configured ? spotify ? "Sua playlist de origem" : "Seu destino de música" : "Configure o OAuth no Vercel"}</small></div>
+    {connected ? <button className="connected-action" onClick={onDisconnect}><span><i /> CONECTADO</span><span className="disconnect-word">DESCONECTAR</span></button> : !termsAccepted ? <span className="connection-missing">ACEITE OS TERMOS</span> : configured ? <a className={`connect-action ${spotify ? "connect-spotify" : "connect-youtube"}`} href={`/api/auth/${provider}`}><span>CONECTAR</span><Icon name="arrow" size={15} /></a> : <span className="connection-missing">FALTA CONFIG.</span>}
   </div>;
 }

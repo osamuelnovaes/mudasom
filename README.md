@@ -15,6 +15,7 @@ O fluxo pede revisão antes de gravar qualquer coisa:
 - OAuth do Spotify para ler playlists às quais a conta conectada tem acesso.
 - OAuth do Google para pesquisar no YouTube e criar uma playlist privada.
 - Revisão manual das correspondências antes de qualquer gravação no destino.
+- Termos de uso e Política de Privacidade acessíveis; as contas só conectam depois do consentimento registrado na sessão criptografada.
 - Sessão criptografada em cookies HTTP-only. Os tokens são usados por rotas no servidor; não há banco de dados. O rascunho da transferência (faixas, sugestões e progresso) fica no armazenamento local do seu navegador para permitir retomada.
 - Licença MIT.
 
@@ -47,8 +48,8 @@ Cole o valor gerado em `.env.local`. Não envie esse arquivo ao GitHub.
 
 ### Criar o app do Spotify
 
-1. Crie um app no [Spotify Developer Dashboard](https://developer.spotify.com/dashboard).
-2. Cadastre este redirect URI local, exatamente como está: `http://127.0.0.1:3000/api/auth/spotify/callback`.
+1. Abra o [Spotify Developer Dashboard](https://developer.spotify.com/dashboard) e aceite os Termos do Desenvolvedor na sua conta.
+2. Crie um app e cadastre este redirect URI local, exatamente como está: `http://127.0.0.1:3000/api/auth/spotify/callback`.
 3. Copie o client ID e o secret para `SPOTIFY_CLIENT_ID` e `SPOTIFY_CLIENT_SECRET`.
 4. Mantenha o app em Development Mode e adicione sua conta Spotify à lista de usuários autorizados. O proprietário do app precisa ter Spotify Premium.
 
@@ -73,15 +74,20 @@ npm run dev
 
 Abra `http://localhost:3000`. O callback do Spotify usa `127.0.0.1` porque o Spotify exige que o endereço de loopback cadastrado corresponda exatamente; o app pode continuar aberto em `localhost`.
 
-## Publicar na Vercel depois
+## Publicação e configuração na Vercel
 
-1. Envie o projeto a um repositório GitHub e importe-o na Vercel.
-2. Adicione `APP_PASSWORD`, um novo `APP_SESSION_SECRET`, as credenciais do Spotify e as do Google nas variáveis de ambiente do projeto Vercel.
-3. Escolha um endereço estável de produção, por exemplo `https://mudasom-seunome.vercel.app`, e cadastre exatamente estes redirects nos dois consoles:
-   - `https://SEU-DOMINIO/api/auth/spotify/callback`
-   - `https://SEU-DOMINIO/api/auth/youtube/callback`
-4. Defina `SPOTIFY_REDIRECT_URI` e `GOOGLE_REDIRECT_URI` na Vercel com esses mesmos endereços.
-5. Faça redeploy depois de salvar as variáveis; em seguida, entre e conecte os dois serviços.
+O código está publicado em [github.com/osamuelnovaes/mudasom](https://github.com/osamuelnovaes/mudasom). O preview pessoal atual usa `https://ent-osamuelnovaes-projects.vercel.app`; sua senha de acesso e `APP_SESSION_SECRET` já estão cadastrados como variáveis sensíveis no ambiente Preview.
+
+Para habilitar as integrações no preview:
+
+1. Cadastre estes redirects, exatamente como estão, nos consoles do Spotify e Google:
+   - `https://ent-osamuelnovaes-projects.vercel.app/api/auth/spotify/callback`
+   - `https://ent-osamuelnovaes-projects.vercel.app/api/auth/youtube/callback`
+2. Adicione no projeto Vercel as variáveis `SPOTIFY_CLIENT_ID`, `SPOTIFY_CLIENT_SECRET`, `SPOTIFY_REDIRECT_URI`, `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` e `GOOGLE_REDIRECT_URI`.
+3. Use os mesmos redirects acima nos valores de `SPOTIFY_REDIRECT_URI` e `GOOGLE_REDIRECT_URI`, salve as variáveis e faça um novo deploy Preview.
+4. Abra o endereço pessoal, entre com a senha fornecida separadamente, aceite os Termos de uso do MudaSom e conecte suas contas.
+
+Para criar um domínio estável próprio ou promover a aplicação para Production, configure as mesmas variáveis no ambiente Vercel correspondente e cadastre o novo domínio como redirect OAuth nos dois provedores.
 
 Use redirects diferentes para desenvolvimento local e produção. Nunca coloque secrets OAuth em variáveis `NEXT_PUBLIC_*`. O cookie de sessão e os tokens são criptografados no servidor com `APP_SESSION_SECRET`, marcados como HTTP-only e como `Secure` em produção HTTPS.
 

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getYoutubeAccessToken, isAuthenticated, readSession, writeSession } from "@/lib/session";
+import { getYoutubeAccessToken, hasAcceptedTerms, isAuthenticated, readSession, writeSession } from "@/lib/session";
 
 export const runtime = "nodejs";
 export const maxDuration = 15;
@@ -7,6 +7,7 @@ export const maxDuration = 15;
 export async function POST(request: NextRequest) {
   const session = readSession(request);
   if (!isAuthenticated(session)) return NextResponse.json({ error: "Sua sessão terminou. Entre novamente." }, { status: 401 });
+  if (!hasAcceptedTerms(session)) return NextResponse.json({ error: "Leia e aceite os Termos de uso antes de usar as integrações." }, { status: 403 });
   let body: { playlistId?: unknown; videoId?: unknown; position?: unknown };
   try { body = await request.json(); } catch { return NextResponse.json({ error: "Dados inválidos para incluir a faixa." }, { status: 400 }); }
   const playlistId = typeof body.playlistId === "string" && /^[A-Za-z0-9_-]{6,100}$/.test(body.playlistId) ? body.playlistId : "";
