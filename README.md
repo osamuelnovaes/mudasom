@@ -1,19 +1,19 @@
 # MudaSom
 
-MudaSom é um app pessoal para transferir playlists. A primeira integração leva uma playlist do Spotify para uma nova playlist privada do YouTube, que também pode aparecer no YouTube Music. É uma implementação própria inspirada em ferramentas de transferência entre plataformas; não reutiliza código nem identidade visual do SongMirror ou do Tune My Music.
+MudaSom é um app pessoal para transferir playlists nos dois sentidos entre Spotify e YouTube/YouTube Music. É uma implementação própria inspirada em ferramentas de transferência entre plataformas; não reutiliza código nem identidade visual do SongMirror ou do Tune My Music.
 
 O fluxo pede revisão antes de gravar qualquer coisa:
 
-1. Conecte as contas do Spotify e Google.
-2. Cole o link de uma playlist do Spotify.
-3. Pesquise opções no YouTube e confira ou troque a versão de cada faixa.
+1. Escolha Spotify ou YouTube Music como origem e o outro como destino.
+2. Conecte as duas contas e cole o link da playlist de origem.
+3. Pesquise opções no destino e confira ou troque a versão de cada faixa.
 4. Crie uma playlist privada no destino com as faixas aprovadas.
 
 ## O que está pronto
 
 - Interface responsiva em português; o preview usa Vercel Authentication como único controle de acesso.
-- OAuth do Spotify para ler playlists às quais a conta conectada tem acesso.
-- OAuth do Google para pesquisar no YouTube e criar uma playlist privada.
+- OAuth do Spotify para ler playlists permitidas e criar playlists privadas.
+- OAuth do Google para ler playlists do YouTube, pesquisar vídeos e criar playlists privadas.
 - Revisão manual das correspondências antes de qualquer gravação no destino.
 - Termos de uso e Política de Privacidade acessíveis; as contas só conectam depois do consentimento registrado na sessão criptografada.
 - Sessão criptografada em cookies HTTP-only. Os tokens são usados por rotas no servidor; não há banco de dados. O rascunho da transferência (faixas, sugestões e progresso) fica no armazenamento local do seu navegador para permitir retomada.
@@ -21,11 +21,12 @@ O fluxo pede revisão antes de gravar qualquer coisa:
 
 ## Limites atuais
 
-- A primeira rota é **Spotify → YouTube / YouTube Music**. Outras origens e destinos, sincronização agendada, backup e compartilhamento ainda não estão implementados.
+- As rotas implementadas são **Spotify ↔ YouTube / YouTube Music**. Apple Music, outras origens e destinos, sincronização agendada, backup e compartilhamento ainda não estão implementados.
 - O MudaSom não impõe um limite total de faixas: ele lê playlists em páginas de 100 itens e permite carregar mais páginas. Projetos novos da YouTube Data API têm cota padrão de 100 chamadas `search.list` por dia, que reinicia à meia-noite no horário do Pacífico. Quando a API negar mais buscas, as faixas restantes ficam pendentes; o rascunho local permite retomar após a reposição da cota. O Google permite solicitar uma ampliação, sujeita a revisão. Veja a [documentação de cotas](https://developers.google.com/youtube/v3/determine_quota_cost) e o [formulário de auditoria e ampliação](https://support.google.com/youtube/contact/yt_api_form?hl=en).
 - Cada inclusão em playlist também usa cota do YouTube Data API. Código aberto e gratuito não altera os limites que o Google aplica ao projeto OAuth conectado.
 - A busca encontra vídeos do YouTube. Ela não garante que o resultado seja a gravação exata nem que todo vídeo apareça no YouTube Music. Confira título e canal antes de transferir.
 - O modo de desenvolvimento do Spotify serve para uso pessoal, mas exige Spotify Premium para o proprietário do app e permite conectar contas previamente autorizadas. Consulte os [modos de cota do Spotify](https://developer.spotify.com/documentation/web-api/concepts/quota-modes).
+- A integração oficial do Apple Music requer um developer token assinado com uma chave do Apple Developer Program, cuja adesão custa US$ 99 por ano nos EUA; por isso, Apple Music não está incluído na versão gratuita atual. Veja a [documentação de tokens da Apple](https://developer.apple.com/documentation/AppleMusicAPI/generating-developer-tokens) e [preços do programa](https://developer.apple.com/programs/enroll/).
 - O app foi feito para uma pessoa e não é um sistema de contas para vários usuários. Mantenha as credenciais OAuth somente em variáveis de ambiente do servidor. Mantenha Vercel Authentication habilitada para o preview.
 - A transferência faz uma chamada por faixa ao destino. Se a Vercel ou a API do provedor falhar no meio, a tela informa que a playlist pode ter ficado incompleta para você conferir.
 
@@ -53,7 +54,7 @@ Cole o valor gerado em `.env.local`. Não envie esse arquivo ao GitHub.
 3. Copie o client ID e o secret para `SPOTIFY_CLIENT_ID` e `SPOTIFY_CLIENT_SECRET`.
 4. Mantenha o app em Development Mode e adicione sua conta Spotify à lista de usuários autorizados. O proprietário do app precisa ter Spotify Premium.
 
-O MudaSom pede os escopos `playlist-read-private` e `playlist-read-collaborative` para acessar as playlists permitidas para a conta conectada.
+O MudaSom pede `playlist-read-private`, `playlist-read-collaborative` e `playlist-modify-private` para ler playlists autorizadas e criar playlists privadas de destino.
 
 ### Criar o app do Google / YouTube
 

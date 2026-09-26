@@ -3,9 +3,10 @@ export type TrackInput = {
   artists: string[];
   album?: string;
   durationMs?: number;
+  sourceUrl?: string;
 };
 
-export type VideoCandidate = {
+export type TrackCandidate = {
   id: string;
   title: string;
   channel: string;
@@ -63,6 +64,20 @@ export function parseSpotifyPlaylistId(input: string) {
     const id = parts[playlistPosition + 1];
     if (playlistPosition < 0 || !id || !/^[A-Za-z0-9]{22}$/.test(id)) return null;
     return id;
+  } catch {
+    return null;
+  }
+}
+
+export function parseYouTubePlaylistId(input: string) {
+  const value = input.trim();
+  if (/^[A-Za-z0-9_-]{10,80}$/.test(value)) return value;
+  try {
+    const url = new URL(value);
+    const host = url.hostname.toLowerCase();
+    if (!["youtube.com", "www.youtube.com", "m.youtube.com", "music.youtube.com"].includes(host)) return null;
+    const id = url.searchParams.get("list");
+    return id && /^[A-Za-z0-9_-]{10,80}$/.test(id) ? id : null;
   } catch {
     return null;
   }
